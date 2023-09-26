@@ -3,12 +3,6 @@ require 'pry'
 require 'hash_with_indifferent_access_duplicate_warning'
 require 'cgi'
 
-class AuthorizationFailed < StandardError; end
-class InsufficientCredits < StandardError; end
-class UnauthorizedDestination < StandardError; end
-class MissingMandatoryField < StandardError; end
-class InvalidKeyField < StandardError; end
-
 class Firemobile
 
     attr_accessor :conn
@@ -35,14 +29,15 @@ class Firemobile
             response = conn.post(send("#{__method__.to_s}_cmd")) do |req|
                 req.body = send("#{__method__.to_s}_params", **params)
             end
+            raise validate(response)[0] if validate(response)[1]
             @response = response
         end
 
         define_method "send_#{kind}_params" do |**params|
             params = ActiveSupport::HashWithIndifferentAccess.new(params.merge(credential_hash))
             c_keys = capture_keys(params.keys, send("#{__method__.to_s.gsub('_params','')}_opts"))
-            raise MissingMandatoryField.new if params['gw-from'.to_sym].nil? || params['gw-to'.to_sym].nil? || params['gw-text'.to_sym].nil?
-            raise InvalidKeyField.new unless params.keys.any? { |x| c_keys.include?(x) }
+            raise 'missing mandatory field' if params['gw-from'.to_sym].nil? || params['gw-to'.to_sym].nil? || params['gw-text'.to_sym].nil?
+            raise 'invalid key field' unless params.keys.any? { |x| c_keys.include?(x) }
             params['gw-text'.to_sym] = CGI.escape(params['gw-text'.to_sym])
 
             params
@@ -52,6 +47,13 @@ class Firemobile
     end
 
     private
+
+    def validate(res)
+      [
+        res.body.split('=')[-1].gsub('+',' '),
+        res.body.split('&').any? { |x| x.match?(/err_msg/) }
+      ]
+    end
 
     def capture_keys(entered_keys, opt_keys)
         (entered_keys + opt_keys)
