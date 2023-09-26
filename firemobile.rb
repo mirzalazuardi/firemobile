@@ -1,6 +1,7 @@
 require 'faraday'
 require 'pry'
 require 'hash_with_indifferent_access_duplicate_warning'
+require 'cgi'
 
 class AuthorizationFailed < StandardError; end
 class InsufficientCredits < StandardError; end
@@ -16,12 +17,9 @@ class Firemobile
     BASE_URL = ENV['FIREMOBILE_URL'].freeze
     USERNAME = ENV['FIREMOBILE_USERNAME'].freeze
     PASSWORD = ENV['FIREMOBILE_PASSWORD'].freeze
-    
+
     def initialize()
-        @conn = Faraday.new(
-            url: BASE_URL,
-            headers: {'Content-Type' => 'application/json'}
-          )
+      @conn = Faraday.new(url: BASE_URL)
     end
 
     def response_hash
@@ -43,44 +41,15 @@ class Firemobile
         define_method "send_#{kind}_params" do |**params|
             params = ActiveSupport::HashWithIndifferentAccess.new(params.merge(credential_hash))
             c_keys = capture_keys(params.keys, send("#{__method__.to_s.gsub('_params','')}_opts"))
-            raise MissingMandatoryField.new if params[:from].nil? || params[:to].nil? || params[:text].nil?
+            raise MissingMandatoryField.new if params['gw-from'.to_sym].nil? || params['gw-to'.to_sym].nil? || params['gw-text'.to_sym].nil?
             raise InvalidKeyField.new unless params.keys.any? { |x| c_keys.include?(x) }
+            params['gw-text'.to_sym] = CGI.escape(params['gw-text'.to_sym])
 
             params
         end
 
         private "send_#{kind}_params".to_sym
     end
-
-    # def send_sms(**params)
-    #     response = conn.post(send("#{__method__.to_s}_cmd")) do |req|
-    #         req.body = send("#{__method__.to_s}_params", **params)
-    #     end
-    # end
-
-    # def send_hlr(**params)
-    #     response = conn.post(send("#{__method__.to_s}_cmd")) do |req|
-    #         req.body = send("#{__method__.to_s}_params", **params)
-    #     end
-    # end
-
-    # def send_hlr_params(**params)
-    #     params = ActiveSupport::HashWithIndifferentAccess.new(params.merge(credential_hash))
-    #     c_keys = capture_keys(params.keys, send("#{__method__.to_s.gsub('_params','')}_opts"))
-    #     raise MissingMandatoryField.new if params[:from].nil? || params[:to].nil? || params[:text].nil?
-    #     raise InvalidKeyField.new unless params.keys.any? { |x| c_keys.include?(x) }
-
-    #     params
-    # end
-    
-    # def send_sms_params(**params)
-    #     params = ActiveSupport::HashWithIndifferentAccess.new(params.merge(credential_hash))
-    #     c_keys = capture_keys(params.keys, send("#{__method__.to_s.gsub('_params','')}_opts"))
-    #     raise MissingMandatoryField.new if params[:from].nil? || params[:to].nil? || params[:text].nil?
-    #     raise InvalidKeyField.new unless params.keys.any? { |x| c_keys.include?(x) }
-
-    #     params
-    # end
 
     private
 
@@ -110,5 +79,6 @@ class Firemobile
 end
 
 # Examples
-# o = Firemobile.new
-# o.send_sms(from: '1234', to: '62812345678', text: 'hello world!')
+#o = Firemobile.new
+#res = o.send_sms('gw-from' => '68886', 'gw-to' => '60197570530', 'gw-text' => 'test using library')
+#puts res.inspect
