@@ -1,7 +1,6 @@
 require 'faraday'
 require 'pry'
 require 'hash_with_indifferent_access_duplicate_warning'
-require 'cgi'
 
 class Firemobile
 
