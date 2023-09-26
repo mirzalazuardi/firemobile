@@ -5,14 +5,17 @@ require 'hash_with_indifferent_access_duplicate_warning'
 class Firemobile
 
     attr_accessor :conn
-    attr_reader :response
+    attr_reader :response, :username, :baseurl
 
     BASE_URL = ENV['FIREMOBILE_URL'].freeze
     USERNAME = ENV['FIREMOBILE_USERNAME'].freeze
     PASSWORD = ENV['FIREMOBILE_PASSWORD'].freeze
 
-    def initialize()
-      @conn = Faraday.new(url: BASE_URL)
+    def initialize(baseurl= nil, username: nil, password: nil)
+      @baseurl = baseurl || BASE_URL
+      @username = username || USERNAME
+      @password = password || PASSWORD
+      @conn = Faraday.new(url: @baseurl)
     end
 
     def response_hash
@@ -46,6 +49,8 @@ class Firemobile
 
     private
 
+    attr_reader :password
+
     def validate(res)
       [
         res.body.split('=')[-1].gsub('+',' '),
@@ -58,7 +63,7 @@ class Firemobile
     end
     
     def credential_hash
-        @credential_hash = { "gw-username": USERNAME, "gw-password" => PASSWORD }
+        @credential_hash = { "gw-username": username, "gw-password" => password }
     end
 
     def send_sms_cmd
