@@ -38,7 +38,6 @@ class Firemobile
             c_keys = capture_keys(params.keys, send("#{__method__.to_s.gsub('_params','')}_opts"))
             raise 'missing mandatory field' if params['gw-from'.to_sym].nil? || params['gw-to'.to_sym].nil? || params['gw-text'.to_sym].nil?
             raise 'invalid key field' unless params.keys.any? { |x| c_keys.include?(x) }
-            params['gw-text'.to_sym] = CGI.escape(params['gw-text'.to_sym])
 
             params
         end
